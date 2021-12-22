@@ -1,0 +1,31 @@
+# user
+# group
+# loop [nested items]
+---
+- name: Users and Groups for backuo
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Create groups
+      group:
+        - name: '{{ item.name }}'
+          gid: '{{ item.gid }}'
+          state: present        
+      loop:
+        - { name: backups, gid: 12310 }
+        - { name: new_backup, gid: 12311 }
+
+    - name: Remove old backup user
+      user:
+        name: old_backup
+        state: absent
+    - name: Create new backup user
+      user:
+        name: new_backup
+        state: present
+        uid: 12427
+        shell: /bin/false
+        password_lock: yes
+        groups: backups, new_backups
+

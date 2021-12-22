@@ -1,0 +1,41 @@
+---
+- hosts: galal2
+  become: yes
+  
+  tasks:
+    - name: archive multi files
+      archive:
+        path:
+          - /home/galal/archive/testDir/testFile2
+          - /home/galal/archive/testDir/testFile3
+          - /home/galal/archive/testDir/testFile5
+        format: gz
+        dest: /home/galal/multiFile.tgz
+    - name: archive with wildcard
+      archive:
+        path:/home/galal/archive/testDir/testFile*
+        exclude_path:
+          - /home/galal/archive/testDir/testFile2
+          - /home/galal/archive/testDir/testFile4
+        format: gz
+        dest: /home/galal/globalExclude.tgz
+    - name: archive a dir
+      archive:
+        path: /home/galal/archive/testDir
+        format: gz
+        dest: /home/galal/dir.gz
+
+- hosts: galal2
+  become: yes
+  
+  tasks:
+    - name: unarchive file located on remote server (galal2)
+      unarchive:
+        src: /home/galal/multiFile.tgz
+        dest: /home/galal/test_unarchive
+        remote_src: yes
+    - name: unarchive file located on ansible controller node to remote server (galal2)
+      unarchive:
+        src: /home/ansible/play.tgz
+        dest: /home/galal/test_unarchive
+        remote_src: no

@@ -1,0 +1,28 @@
+---
+- hosts: webserver
+  become: yes
+
+  tasks:
+    - name: copy index.html to webserver
+      copy:
+        src: /root/index.html
+        dest: /var/www/html
+        owner: apache
+        group: apache
+        mode: 0644
+
+- hosts: dbservers
+  become: yes
+  
+  tasks:
+    - name: Copy deply.sh
+#     script: /root/deploy.sh
+      
+      copy:
+        src: /root/deploy.sh
+        dest: /opt/deploy.sh
+        owner: root
+        group: root
+        mode: 0755
+    - name: Execute the script
+      command: sh /opt/deploy.sh

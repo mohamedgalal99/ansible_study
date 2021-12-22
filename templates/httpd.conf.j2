@@ -1,0 +1,24 @@
+# This is main httpd config file
+#
+# {{ ansible_managed }}
+
+ServerRoot "/etc/httpd"
+Listen {{ http_port }}
+Include config.modules.d/*.conf
+
+User apache
+Group apache
+
+ServerAdmin {{ admin }}@{{ ansible_hostname }}
+
+<Directory />
+  AllowOverride none
+  Require all denied
+</Directory>
+
+DocumentRoot "{{ content_dir }}"
+<Directory "{{ content_dir }}">
+  AllowOverride None
+  # Allow open access
+  Require all granted
+</Directory>

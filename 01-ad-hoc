@@ -1,0 +1,32 @@
+# Validate server is running and reachable
+$ ansible all -i inventory -m ping
+
+# Gather Ansible Facts
+$ ansible all -i inventory -m setup
+
+# Copy file from local to remote 
+$ ansible webserver -i inventory -b -m copy -a "src=/home/cloud/ansible.src-file dest=/tmp owner=galal group=galal mode=0644"
+
+# Ansible execute shell command
+$ ansible webserver -a "ls -al /tmp"
+
+# Create user
+$ ansible webserver -i inventory -m user -a "name=galal" -b
+
+# Create Dir and File in Galal home dir
+$ ansible webservers -i inventory -m file -a "path=/home/galal/demo state=directry owner=galal group=galal"	# => create directory
+$ ansible webservers -i inventory -m file -a "path=/home/galal/demo/file-01 state=touch owner=galal"		# => create file
+
+# install latest apache 
+$ ansible webservers -i inventory -m yum -a "name=httpd state=latest"
+$ ansible webservers -i inventory -m service -a "name=httpd state=started enabled=yes"		# state => strated, stopped
+$ ansible webservers -i inventory -m service -a "name=httpd state=absent"			# remove apache 
+
+# Git module
+$ ansible webservers -i inventory -b -m yum -a "name=git state=latest"
+$ ansible webservers -i inventory -m git -a "repo=https://github.com/myrepo.git dest=/home/galal/ansible/"
+$ ansible webservers -i inventory -b -a "ls /home/galal/ansible/"
+
+
+# List firewalld rules
+$ ansible all -a "firewall-cmd --list-all" -b

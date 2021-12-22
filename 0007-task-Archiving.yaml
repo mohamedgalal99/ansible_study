@@ -1,0 +1,26 @@
+# archive
+# unarchive
+# tar.gz
+---
+- name: Archive file
+  hosts: dbserver
+  become: yes
+  
+  tasks:
+    - name: Unzrchive tar.gz
+      unarchive:
+        src: /root/file.tar.gz
+        dest: /opt
+    - name: Unarchive to specific path
+      unarchive:
+        src: /tmp/devstuff.tar.gz
+        dest: /opt
+        remote_src: yes
+    - name: Archive messages
+      archive:
+        path: /var/log/messages
+        dest: /tmp/messages.tar.ga
+    - name: Copy files from remote server to local server
+      fetch:
+        src: /tmp/messages.tar.gz
+        dest: /tmp

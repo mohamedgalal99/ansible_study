@@ -1,0 +1,20 @@
+---
+- name: Cron jobs
+  hosts: all
+  become: yes
+  tasks:
+    - name: 
+      cron:
+        name: "Weekly yum update"
+        special_time: weekly
+        job: "/usr/bin/yum update -y"
+    - cron:
+        name: "Reboot Status"
+        special_item: reboot
+        job: "/usr/bin/status"
+    - cron:
+      name: "Fail lock report"
+      job: /usr/bin/faillock_report
+      weekday: "1,3,5"
+      minute: "30"
+      hour: "7"

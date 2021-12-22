@@ -1,0 +1,44 @@
+# We will use parted module, to configure block device partition
+---
+- name: Configure partations
+  hosts: galal
+  become: yes
+  
+  tasks:
+    - name: Create 2 partations
+      parted:
+        device: "{{ item }}"
+        state: present
+        part_end: 1GiB
+        label: msdos
+        flag: [lvm]
+      loop:
+        - /dev/nvme1n1
+        - /dev/nvme2n1
+    - name: Create logical volume
+      lvg:
+        pvs: /dev/nvme1n1,/dev/nvme2n1
+        vg: vg_ansible
+        state: present
+    - name: Create, remove and resize logical volumes
+      lvol:
+        vg: vg_ansible
+        lv: lv_ansible
+        size: 512m
+        state: present
+
+- hosts: galal
+  become: yes
+
+  tasks:
+    - name: Create ext4 file system on lvm
+      filesystem:
+        fstype: ext4
+        dev: /dev/mapper/vg_ansible-lv_ansible
+    - name: Mount Created file
+      mount:
+        path: /mnt/test_mount
+        src: /dev/mapper/vg_ansible-lv_ansible
+        fstype: ext4
+        state: mounted
+        backup: yes

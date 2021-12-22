@@ -1,0 +1,51 @@
+# - name: show options for cron module
+#   cron:
+#     name: "job-name"
+#     special_time: reboot|daily|weekly
+#     minute: 0-59|*|*/2
+#     hour: 0-23|*|*/2
+#     day: 1-31|*|*/2
+#     month: 1-12|*|*/2
+#     weekday: 0-6
+#     user: user_name
+#     cron_file: file_name
+#     state: present|absent
+#     job: command
+# - name: template for (at) schaduling
+#   at:
+#     command: to_run
+#     script_file: /path/to/script.sh
+#     count: count i want
+#     unit: minutes|hours|days|weeks
+#     state: present|absent
+
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: perform a weekly yum update
+      cron:
+        name: "Weekly yum update"
+        minute: "*"
+        hour: "2"
+        month: "*"
+        weekday: "0"
+        user: root
+        state: present
+        job: "yum -y update"
+
+- hosts: galal
+  become: yes
+
+  tasks:
+    - name: install at 
+      yum:
+        name: at
+        state: latest
+    - name: use (at) to copy httpd err log
+      at:
+        command: cp /var/log/httpd/error.log /home/cloud
+        count: 2
+        units: hours
+        state: present

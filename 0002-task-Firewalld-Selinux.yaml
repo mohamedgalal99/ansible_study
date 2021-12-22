@@ -1,0 +1,49 @@
+# firewall
+# selinux
+---
+- name: Setup FW on webservers
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: ssh firewall
+      firewalld:
+        service: ssh
+        permanent: yes
+        state: enabled
+        immediate: yes
+    - name: apache fw
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+- name: Setup fw on dbservers
+  hosts: dbservers
+  become: yes
+
+  tasks:
+    - name: Allow SSH port
+      firewalld:
+        service: ssh
+        state: enabled
+        permanent: yes
+        immediate: yes
+    - name: Allow postgres fw
+      firewalld:
+        service: postgresql
+        state: enabled
+        permanent: yes
+        immediate: yes
+
+- name: Turn on SElinux
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: enable selinux
+      selinux:
+        state: enforcing
+        policy: targeted
+

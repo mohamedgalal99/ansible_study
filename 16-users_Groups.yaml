@@ -1,0 +1,36 @@
+---
+- hosts: galal
+  become: yes
+  
+  tasks:
+    - name: Crate groups
+      group:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - students
+        - bayside
+    - name: Create zach user
+      user:
+        name: zach
+        comment: Zach Jan
+        shell: /bin/sh
+        groups: students,bayside
+        append: yes
+        state: present
+    - name: Create Kelly user
+      user: 
+        name: kelly
+        comment: Kelly Jurgen
+        uid: 1050
+        groups: students,bayside
+        append: yes
+        state: present
+    - name: Create slater user
+      user:  
+        name: slater
+        comment: ac slater
+        uid: 1051
+        groups: students,bayside
+        append: yes
+        state: present

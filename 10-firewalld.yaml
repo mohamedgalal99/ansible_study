@@ -1,0 +1,56 @@
+---
+- hosts: webservers
+  become: yes
+
+  tasks:
+    - name: add firewall rue for http & https
+      firewalld:
+        zone: public
+        service: "{{ item }}"
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop:
+        - https
+        - http
+    - name: add firewall rule for 8080-8084
+      firewalld:
+        port: 8080-8084/tcp
+        permanent: yes
+        immediate: yes
+        state: enabled 
+    - name: add forward port 443 to 8443
+      firewalld:
+        rich_rule: rule family=ipv4 forward-port port=443 protocol=tcp to-port=443
+        immediate: yes
+        permanent: yes
+        state: enabled
+
+- name: Delete FW rules
+  hosts: websites
+  become: yes
+
+  tasks:
+    - name: Delete firewall rue for http & https
+      firewalld:
+        zone: public
+        service: "{{ item }}"
+        permanent: yes
+        immediate: yes
+        state: disabled
+      loop:
+        - https
+        - http
+    - name: Delete firewall rule for 8080-8084
+      firewalld:
+        port: 8080-8084/tcp
+        permanent: yes
+        immediate: yes
+        state: disabled
+    - name: delete forward port 443 to 8443
+      firewalld:
+        rich_rule: rule family=ipv4 forward-port port=443 protocol=tcp to-port=443
+        immediate: yes
+        permanent: yes
+        state: disabled
+

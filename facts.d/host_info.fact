@@ -1,0 +1,7 @@
+[labserver]
+type=cloud
+platform=aws
+
+[localhost]
+type=Family
+platform=laptop

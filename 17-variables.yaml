@@ -1,0 +1,25 @@
+# user as variables from vars/users.yaml
+# with_items
+# loop [work as with_item]
+---
+- hosts: galal
+  become: yes
+  vars_files:
+    - /home/galal/ansible/vars/users.yaml
+  tasks:
+    - name: Create users
+      user:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - "{{ students }}"
+        - "{{ faculty }}"
+
+    # Delete users
+    - name: Delete users
+      user:
+        name: "{{ item }}" 
+        state: absent
+        remove: yes
+      # alternative of with_items
+      loop: "{{ [students,faculty]|flatten(1) }}"

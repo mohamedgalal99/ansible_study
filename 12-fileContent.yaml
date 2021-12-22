@@ -1,0 +1,45 @@
+# we will use ansible to
+# - Craete file
+# - Copy file
+# - Replace || add line in file
+
+---
+- hosts: galal
+  tasks:
+    - name: touch a new file
+      file:
+        path: /tmp/testfile1
+        state: touch
+
+    - name: add line with copy module
+      copy:
+        content: added by copy module
+        dest: /tmp/testfile2
+    - name: add line with lineinfile
+      lineinfile:
+        path: /tmp/testFile3
+        line: add by lineinfile module
+        create: yes
+
+- hosts: galal
+  tasks:
+    - name: Replace line in testFile2
+      lineinfile:
+        path: /tmp/testFile2
+        regexp: "^added.*$"
+        line: "line replaced by lineinfile module"
+    - name: Repalce line in testFile3
+      replace:
+        path: /tmp/testFile3
+        regexp: ".*module$"
+        replace: "line replaced by replace module"
+
+- hosts: galal
+  tasks:
+    - name: Push out info temp
+      template:
+        src: /home/cloud/ansible/templates/info.j2
+        dest: //tmp/info.txt
+#        owner:
+#        group:
+#        mode:

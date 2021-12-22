@@ -1,0 +1,24 @@
+# service
+# systemd
+---
+- hosts: webservers
+  become: yes
+
+  tasks:
+    - name: start httpd
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+- hosts: dbservers:admins
+  become: yes
+
+  tasks:
+    - name: start postgresql
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+        # don't wait till process start, just send signal and continue
+        no_block: yes

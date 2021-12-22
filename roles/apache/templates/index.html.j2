@@ -1,0 +1,5 @@
+Welcome to {{ ansible_hostname }}
+- The IPv4 Addr os {{ ansible_default_ipv4['address'] }}
+- The current memory usage is {{ ansible_memory_mb['real']['used'] }}mb out of { ansible_memory_mb['real']['total'] }}mb
+- The {{ ansible_devices| first }} block device has the following partitions:
+  - {{ ansible_devices['nvme0n1']['partitions']|join('\n - ') }}

@@ -1,0 +1,19 @@
+#Erorr Handling
+#- Ignore error by using 'ignor_errors' keyword
+#- Force previously notified handler to run using 'force_handlers' keyword
+#- Define failure conditions using the 'failed_when' keyword
+#- Override the "changed" status result using 'chnaged_when' keyword
+#- Abort an entire play if any task fails using 'any_error_fatal' keyword
+#- 
+
+# Using `ignore_errors`
+---
+- hosts: labservers
+  tasks:
+   - name: Copy remote files
+     fetch:
+       src: /tmp/errorFile
+       dest: /tmp
+     ignore_errors: yes
+
+# Using ``

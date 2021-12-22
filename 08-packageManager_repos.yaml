@@ -1,0 +1,51 @@
+---
+
+- name: Configure yum repositores
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Add epel repository
+      yum_repository:
+        name: epel
+        description: EPEL yum repo
+        baseurl: https://dl.fedoraproject.org/pub/epel/epel-release-ltest-8.noarch.rpm
+        gpgcheck: no
+    - name: Remove repository
+      yum_repository:
+        name: repo_name
+        file: repo_file_name (without the ".repo" extention)
+        state: absent
+  
+- hosts: lol
+  become: yes
+  tasks:
+    - name: install a package
+      yum:
+        name: package_name
+        state: latest
+    
+    - name: Install a list of packages
+      yum:
+        name:
+          - httpd
+          - vsftpd
+          - vim
+          - firewalld
+        state: latest
+    
+    - name: Install rpm from remote repo
+      yum:
+        name: https://website.com/path/to/repo
+        state: present
+    
+    - name: install rpm from a local file
+      yum:
+        name: /path/to/file.rpm
+        state: present
+    
+    - name: Remove a package
+      yum:
+        name: package_name
+        state: absent
+

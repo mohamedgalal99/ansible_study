@@ -1,0 +1,31 @@
+---
+- name: Copy SSH key to remote servers
+  hosts: webserver
+  vars:
+    users:
+      - cloud
+      - root
+
+  tasks:
+    - name: copy SSH key to remote servers
+      authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}" 
+      with_items:
+        - "{{ users }}"
+
+    - name: Ensure No login with password
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify:
+        - restart sshd
+
+  handlers:
+    - name: restart sshd
+      systemd:
+        name: sshd
+        state: restarted
+        daemon_reload: yes

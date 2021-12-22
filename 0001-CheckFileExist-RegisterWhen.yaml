@@ -1,0 +1,22 @@
+---
+- hosts: localhost
+
+  tasks:
+    - name: Create file
+      stat: 
+        path: /root/love 
+      register: lol
+    - name: display register variable
+      debug: 
+        msg: "File love not exist "
+      when: not lol.stat.exists
+
+    - name: display register if find file
+      debug:
+        msg: "We Find file {{ lol }}"
+      when: lol.stat.exists
+
+    - name: Task name
+      debug:
+        msg: "The Dir exists"
+      when: lol.stat.exists and lol.stat.isdi

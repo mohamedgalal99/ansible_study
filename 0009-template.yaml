@@ -1,0 +1,10 @@
+---
+- hosts: webservers
+  become: yes
+  vars:
+    webdir: '/opt/'
+  tasks:
+    - name: Apply template
+      template:
+        src: /root/httpd.template
+        dest: /etc/httpd/conf/httpd.conf     

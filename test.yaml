@@ -1,0 +1,8 @@
+---
+- hosts: localhost
+  become: yes
+
+  tasks:
+    - name: display messages from variables
+      debug:
+        msg: "{{ ansible_devices['vda']['partitions']|join('\n - ') }}"
