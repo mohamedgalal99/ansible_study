@@ -1,0 +1,18 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Copy ssh key to remote server
+      authorized_key:
+        user: ansible
+        state: present
+        key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+    - name: Add user to suders file
+      lineinfile:
+        dest: /etc/sudoers.d/ansible
+        line: 'ansible  ALL=(ALL)       NOPASSWD: ALL'
+        state: present
+        mode: 0440
+        create: yes
+        validate: 'visudo -cf %s'

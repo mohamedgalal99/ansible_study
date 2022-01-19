@@ -1,0 +1,26 @@
+---
+- hosts: dbservers
+  become: yes
+
+  tasks:
+    - name: LVG create
+      lvg:
+        vg: RHCE
+        pvs: /dev/xvdg
+    - name: Logigcal Volume Setup
+      lvol:
+        lv: AppDB2
+        vg: RHCE
+        size: 10G
+        pvs: /dev/xvdg
+        state: present
+    - name: Formate disk
+      filesystem:
+        dev: /dev/RHCE/AppDB2
+        fstype: xfs
+    - name: Mount disk
+      mount:
+        fstype: xfs
+        src: /dev/RHCE/AppDB2
+        path: /mnt/dbdata
+        state: mounted
