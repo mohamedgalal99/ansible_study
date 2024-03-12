@@ -1,0 +1,152 @@
+- hosts: localhost
+  become: yes
+  vars:
+    db_user: "eagrly"
+    db_password: "leafcloud123"
+    db_name: "eagrly"
+    file_names:
+      - name: "test.leaf.cloud"
+        server_name: "test.leaf.cloud"
+        status: enable
+        db_user: "eagrly"
+        db_password: "leafcloud123"
+        db_name: "eagrly"
+        root_dir: "/var/www/test.leaf.cloud"
+      - name: "lolo.leaf.cloud"
+        server_name: "lolo.leaf.cloud"
+        status: disable
+        root_dir: "/var/www/lolo.leaf.cloud/html/public_html"
+      - name: "default"
+        server_name: "_"
+        status: disable
+        root_dir: "/var/www/html"
+
+  tasks:
+    - name: Update and upgrade apt packages
+      become: true
+      apt: # ansible.builtin.apt
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+    - name: Install Required PHP packages
+      apt:
+        name:
+          - php
+          - php-curl
+          - php-bcmath
+          - php-dev
+          - php-fpm 
+          - ssl-cert
+          - php-gd
+          - php-imagick
+          - php-intl
+          - php-json
+          - php-mbstring
+          - php-mysql
+          - php-mysql
+          - php-pcov
+          - php-pear
+          - php-xml
+          - php-zip
+          - git
+          - phpmyadmin
+        state: latest
+
+    - name: Install Nginx Server
+      apt:
+        name: nginx
+        state: latest
+
+    - name: Delete default website
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Create website dir
+      file:
+        path: "/var/www/{{ item.name }}"
+        state: directory
+        mode: '0755'
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Create Nginx SSL Dir
+      file:
+        path: "/etc/nginx/ssl"
+        state: directory
+        mode: '0755'
+
+    - name: Generate SSL Certificate
+      command: "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/{{ item.server_name }}.key -out /etc/nginx/ssl/{{ item.server_name }}.crt -subj '/C=US/ST=State/L=City/O=Organization/OU=Unit/CN={{ item.server_name }}'"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Download latest wordpress
+      unarchive:
+        src: https://wordpress.org/latest.tar.gz
+        dest: "/var/www/{{ item.name }}"
+        remote_src: yes
+        creates: "/var/www/{{ item.name }}/wordpress"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Set Owner to www-data
+      file:
+        path: "/var/www/{{ item.name }}"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Setting correct permission for Directories
+      shell: "/usr/bin/find /var/www/{{ item.name }}/wordpress/ -type d -exec chmod 750 {} \\;"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Setting correct permission for Files
+      shell: "/usr/bin/find /var/www/{{ item.name }}/wordpress/ -type f -exec chmod 640 {} \\;"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Set up wp-config
+      template:
+        src: "templates/wp-config.php.j2"
+        dest: "/var/www/{{ item.name }}/wordpress/wp-config.php"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Create Sites nginx configuration files
+      template:
+        src: "templates/site.j2"
+        dest: "/etc/nginx/sites-available/{{ item.name }}.conf"
+      with_items: "{{ file_names }}"
+
+    - name: Enable Websites
+      file:
+        src: "/etc/nginx/sites-available/{{ item.name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ item.name }}"
+        state:  link
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Disable Websites
+      file:
+        src: "/etc/nginx/sites-available/{{ item.name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ item.name }}"
+        state:  absent
+      with_items: "{{ file_names }}"
+      when: item.status == "disable"
+
+    - name: Testing Nginx Configuration
+      command: nginx -t
+      register: response
+
+    # need to add to handler, but doesn't work
+    - name: Restart nginx if config is ok
+      systemd:
+        state: restarted
+        name: nginx 
+      when: response.rc == 0

@@ -1,0 +1,28 @@
+- hosts: localhost
+  become: yes
+  vars:
+    db_user: "eagrly"
+    db_password: "leafcloud123"
+    db_name: "eagrly"
+    file_names:
+      - name: "test.leaf.cloud"
+        server_name: "test.leaf.cloud"
+        status: enable
+        db_user: "eagrly"
+        db_password: "leafcloud123"
+        db_name: "eagrly"
+        root_dir: "/var/www/test.leaf.cloud"
+      - name: "lolo.leaf.cloud"
+        server_name: "lolo.leaf.cloud"
+        status: disable
+        root_dir: "/var/www/lolo.leaf.cloud/html/public_html"
+
+  tasks:
+    - name: Test Nginx configuration
+      command: nginx -t
+      register: response
+
+    - name: display register if find file
+      debug:
+        msg: " {{ response }}"
+      when response.rc == 0

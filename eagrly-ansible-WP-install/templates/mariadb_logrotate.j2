@@ -1,0 +1,22 @@
+/var/lib/mysql/mysqld.log /var/log/mysql/mysql.log /var/lib/mysql/mariadb.log /var/log/mysql/mysql-slow.log /var/log/mysql/mariadb-slow.log /var/log/mysql/error.log {
+  missingok
+  notifempty
+  monthly
+  rotate 6
+  maxsize 500M
+  minsize 50M
+  compress
+  delaycompress
+  sharedscripts
+  postrotate
+    if test -r /etc/mysql/debian.cnf
+    then
+      EXTRAPARAM='--defaults-file=/etc/mysql/debian.cnf'
+    fi
+    if test -x /usr/bin/mariadb-admin
+    then
+      /usr/bin/mariadb-admin $EXTRAPARAM --local flush-error-log \
+        flush-engine-log flush-general-log flush-slow-log
+    fi
+  endscript
+}

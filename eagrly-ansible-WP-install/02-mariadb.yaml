@@ -1,0 +1,69 @@
+---
+- hosts: webservers
+  become: yes
+  vars:
+    mysql_root_password: "OshotsAg5"
+    db_user: "eagrly"
+    db_password: "leafcloud123"
+    db_name: "eagrly"
+    mariadb_socket: "/run/mysqld/mysqld.sock"
+
+
+  tasks:
+    - name: Install MariaDB Server
+      apt:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - mariadb-server
+        - mariadb-common
+        - python3-mysqldb
+
+    - name: Install MariaDB Client
+      apt: 
+        name: mariadb-client 
+
+    - name: Restart MariaDB
+      service: 
+        name: mysql 
+        state: restarted
+    - name: Check if mysql root password was not set
+      shell: >
+        mysql -u root
+        -h localhost
+        -e "quit"
+      ignore_errors: true
+      register: check_passwd_root
+
+    - name: Set MariaDB root password for 127.0.0.1, localhost
+      mysql_user:
+        name: root
+        password: "{{ mysql_root_password }}" 
+        host: "{{ item }}"
+        login_user: root
+        login_unix_socket: "{{ mariadb_socket }}"
+        state: present
+      with_items:
+        - 127.0.0.1
+        - localhost
+      notify: Flush Priviliges
+      when: check_passwd_root.rc == 0
+
+    - name: Create Database
+      mysql_db:
+        name: "{{ db_name }}"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        state: present
+
+    - name: Set MariaDB User and password for 127.0.0.1, localhost
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        #host_all: true
+        host: localhost
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: "{{ mariadb_socket }}"
+        state: present
+        priv: "{{ db_name }}.*:ALL,GRANT"

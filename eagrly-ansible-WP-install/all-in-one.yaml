@@ -1,0 +1,339 @@
+########################################################################
+# This playbook install Wordpress and do the following:
+# - Create user, and copy SSH keys to this user
+# - Install mariadb-server, create dtatbases, users and grant access
+# - Install PHP
+# - Install wordpress
+# - Generate self-sign cert 
+# - Generate certbot cert
+# - Install nginx
+# - Install varnish
+########################################################################
+
+- hosts: webservers
+  become: yes
+  vars:
+    admin_mail: "galal@leaf.cloud"
+    mysql_root_password: "OshotsAg5"
+    mariadb_socket: "/run/mysqld/mysqld.sock"
+    created_username: "eagerly"
+
+    db_user: "eagrly"
+    db_password: "leafcloud123"
+    db_name: "eagrly"
+    file_names:
+      - name: "word.leaf.cloud"
+        server_name: "word.leaf.cloud"
+        status: "enable"
+        phpadmin: "enable"
+        db_user: "eagrly"
+        db_password: "leafcloud123"
+        db_name: "eagrly"
+        db_create: "true"
+        root_dir: "/var/www/word.leaf.cloud"
+      - name: "lolo.leaf.cloud"
+        server_name: "lolo.leaf.cloud"
+        status: "disable"
+        phpadmin: "disable"
+        db_user: ""
+        db_password: ""
+        db_name: ""
+        db_create: "false"
+        root_dir: "/var/www/lolo.leaf.cloud/html/public_html"
+      - name: "default"
+        server_name: "_"
+        status: "disable"
+        phpadmin: "disable"
+        db_create: "false"
+        root_dir: "/var/www/html"
+
+  tasks:
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+    - name: Create a new regular user with sudo privileges
+      user: # ansible.builtin.user
+        name: "{{ created_username }}"
+        state: present
+        groups: sudo
+        shell: /bin/bash
+        append: true
+        create_home: true
+
+    - name: Create .ssh folder
+      file: # ansible.builtin.file
+        path: /home/{{ created_username }}/.ssh
+        state: directory
+        owner: "{{ created_username }}"
+        group: "{{ created_username }}"
+        mode: 0700
+
+    - name: Generate an OpenSSH keypair with the default values (4096 bits, rsa)
+      community.crypto.openssh_keypair:
+        path: /home/{{ created_username }}/.ssh/id_rsa
+        owner: "{{ created_username }}"
+        group: "{{ created_username }}"
+
+    - name: Another symbolic mode example, adding some permissions and removing others
+      authorized_key:
+        user: "{{ created_username }}"
+        state: present
+        key: "{{ lookup('file', 'files/authorized_keys') }}"
+
+    - name: Install MariaDB Server
+      apt:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - mariadb-server
+        - mariadb-common
+        - python3-mysqldb
+
+    - name: Install MariaDB Client
+      apt: 
+        name: mariadb-client 
+
+    # Need to be added as handler
+    - name: Restart MariaDB
+      service: 
+        name: mysql 
+        state: restarted
+
+    - name: Check if mysql root password was not set
+      shell: >
+        mysql -u root
+        -h localhost
+        -e "quit"
+      ignore_errors: true
+      register: check_passwd_root
+
+    - name: Set MariaDB root password for 127.0.0.1, localhost
+      mysql_user:
+        name: root
+        password: "{{ mysql_root_password }}" 
+        host: "{{ item }}"
+        login_user: root
+        login_unix_socket: "{{ mariadb_socket }}"
+        state: present
+      with_items:
+        - 127.0.0.1
+        - localhost
+#      notify: Flush Priviliges   # don't think it's working
+      when: check_passwd_root.rc == 0
+
+    - name: Flush Priviliges
+      command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
+
+    - name: Create Database
+      mysql_db:
+        name: "{{ item.db_name }}"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        state: present
+      with_items: "{{ file_names }}"
+      when: (item.status == "enable") and (item.db_create == "true")
+
+    - name: Set MariaDB User and password for 127.0.0.1, localhost
+      mysql_user:
+        name: "{{ item.db_user }}"
+        password: "{{ item.db_password }}"
+        #host_all: true
+        host: localhost
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: "{{ mariadb_socket }}"
+        state: present
+        priv: "{{ item.db_name }}.*:ALL,GRANT"
+      with_items: "{{ file_names }}"
+      when: (item.status == "enable") and (item.db_create == "true")
+
+    - name: Install Required PHP packages
+      apt:
+        name:
+          - php
+          - php-curl
+          - php-bcmath
+          - php-dev
+          - php-fpm 
+          - ssl-cert
+          - php-gd
+          - php-imagick
+          - php-intl
+          - php-json
+          - php-mbstring
+          - php-mysql
+          - php-mysql
+          - php-pcov
+          - php-pear
+          - php-xml
+          - php-zip
+          - git
+          - certbot 
+          - python3-certbot-nginx
+#         - phpmyadmin
+        state: latest
+
+    - name: Stop apache 
+      systemd:
+        state: stopped
+        enabled: false
+        name: apache2 
+
+    - name: Install Nginx Server
+      apt:
+        name: nginx
+        state: latest
+
+    - name: Delete default website
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Create website dir
+      file:
+        path: "/var/www/{{ item.name }}"
+        state: directory
+        mode: '0755'
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Create Nginx SSL Dir
+      file:
+        path: "/etc/nginx/ssl"
+        state: directory
+        mode: '0755'
+
+    - name: Generate SSL Certificate
+      command: "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/{{ item.server_name }}.key -out /etc/nginx/ssl/{{ item.server_name }}.crt -subj '/C=US/ST=State/L=City/O=Organization/OU=Unit/CN={{ item.server_name }}'"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Download latest wordpress
+      unarchive:
+        src: https://wordpress.org/latest.tar.gz
+        dest: "/var/www/{{ item.name }}"
+        remote_src: yes
+        creates: "/var/www/{{ item.name }}/wordpress"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Set Owner to www-data
+      file:
+        path: "/var/www/{{ item.name }}"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+#    - name: Adding phpmyadmin
+#      command: "/usr/bin/cp -r /usr/share/phpmyadmin /var/www/{{ item.name }}/wordpress"
+#      with_items: "{{ file_names }}"
+#      when: item.phpadmin == "enable"
+
+    - name: Setting correct permission for Directories
+      shell: "/usr/bin/find /var/www/{{ item.name }}/wordpress/ -type d -exec chmod 750 {} \\;"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Setting correct permission for Files
+      shell: "/usr/bin/find /var/www/{{ item.name }}/wordpress/ -type f -exec chmod 640 {} \\;"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Set up wp-config
+      template:
+        src: "templates/wp-config.php.j2"
+        dest: "/var/www/{{ item.name }}/wordpress/wp-config.php"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Create Sites nginx configuration files
+      template:
+        src: "templates/site.j2"
+        dest: "/etc/nginx/sites-available/{{ item.name }}.conf"
+      with_items: "{{ file_names }}"
+
+    - name: Enable Websites
+      file:
+        src: "/etc/nginx/sites-available/{{ item.name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ item.name }}"
+        state:  link
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Disable Websites
+      file:
+        path: "/etc/nginx/sites-enabled/{{ item.name }}"
+        state:  absent
+      with_items: "{{ file_names }}"
+      when: item.status == "disable"
+
+#    - name: Uninstall apache
+#      apt:
+#        name: apache2
+#        state: absent
+
+    - name: Testing Nginx Configuration
+      command: nginx -t
+      register: response
+
+    # need to add to handler, but doesn't work
+    - name: Restart nginx if config is ok
+      systemd:
+        state: restarted
+        name: nginx 
+      when: response.rc == 0
+
+    # Varnish cache setup
+    - name: Install Varnish
+      apt:
+        name: varnish
+        state: present
+#
+    - name: Create Varnish Configuration Directory
+      file:
+        path: /etc/varnish
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+#
+    - name: Edit Varnish Configuration
+      template:
+        src: varnish-default.vcl.j2
+        dest: "/etc/varnish/default.vcl"
+#
+#    - name: Modify Varnish service file
+#      template:
+#        src: templates/varnish.service.j2
+#        dest: /lib/systemd/system/varnish.service
+#
+    - name: Load systemd config and start Varnish service 
+      systemd:  # ansible.builtin.systemd_service
+        state: restarted
+        daemon_reload: true
+        name: varnish
+
+    # Certbot generate cert
+    - name: Generation of a new certificate
+      shell: >
+        certbot --nginx --email "{{ admin_mail }}" --agree-tos -d "{{ item.name }}"
+      with_items: "{{ file_names }}"
+      when: item.status == "enable"
+
+    - name: Testing Nginx Configuration
+      command: nginx -t
+      register: response
+
+    # need to add to handler, but doesn't work
+    - name: Restart nginx if config is ok
+      systemd:
+        state: restarted
+        name: nginx
+      when: response.rc == 0

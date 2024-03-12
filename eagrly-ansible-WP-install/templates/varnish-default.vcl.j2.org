@@ -1,0 +1,107 @@
+# Marker to tell the VCL compiler that this VCL has been written
+# 4.0 or 4.1 syntax.
+vcl 4.1;
+
+import std;
+
+backend default {
+    .host = "127.0.0.1";
+    .port = "8080";
+}
+
+sub vcl_recv {
+    # Remove empty query string parameters
+    # e.g.: www.example.com/index.html?
+    if (req.url ~ "\?$") {
+        set req.url = regsub(req.url, "\?$", "");
+    }
+
+    # Remove port number from host header
+    set req.http.Host = regsub(req.http.Host, ":[0-9]+", "");
+
+    # Sorts query string parameters alphabetically for cache normalization purposes
+    set req.url = std.querysort(req.url);
+
+    # Remove the proxy header to mitigate the httpoxy vulnerability
+    # See https://httpoxy.org/
+    unset req.http.proxy;
+
+    # Are there cookies left with only spaces or that are empty?
+    if (req.http.cookie ~ "^\s*$") {
+        unset req.http.cookie;
+    }
+
+    if (req.restarts == 0) {
+        if (req.http.x-forwarded-for) {
+            set req.http.X-Forwarded-For = req.http.X-Forwarded-For + ", " + client.ip;
+        } else {
+            set req.http.X-Forwarded-For = client.ip;
+        }
+    }
+
+    if (req.method != "GET" &&
+        req.method != "HEAD" &&
+        req.method != "PUT" &&
+        req.method != "POST" &&
+        req.method != "TRACE" &&
+        req.method != "OPTIONS" &&
+        req.method != "DELETE") {
+        /* Non-RFC2616 or CONNECT which is weird. */
+        return (pipe);
+    }
+
+    # Remove tracking query string parameters used by analytics tools
+    if (req.url ~ "(\?|&)(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=") {
+        set req.url = regsuball(req.url, "&(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=([A-z0-9_\-\.%25]+)", "");
+        set req.url = regsuball(req.url, "\?(utm_source|utm_medium|utm_campaign|utm_content|gclid|cx|ie|cof|siteurl)=([A-z0-9_\-\.%25]+)", "?");
+        set req.url = regsub(req.url, "\?&", "?");
+        set req.url = regsub(req.url, "\?$", "");
+    }
+
+    if (req.method != "GET" && req.method != "HEAD") {
+        /* We only deal with GET and HEAD by default */
+        set req.http.X-Cacheable = "NO:REQUEST-METHOD";
+        return (pass);
+    }
+
+    # Mark static files with the X-Static-File header, and remove any cookies
+    # X-Static-File is also used in vcl_backend_response to identify static files
+    if (req.url ~ "^[^?]*\.(7z|avi|bmp|bz2|css|csv|doc|docx|eot|flac|flv|gif|gz|ico|jpeg|jpg|js|less|mka|mkv|mov|mp3|mp4|mpeg|mpg|odt|ogg|ogm|opus|otf|pdf|png|ppt|pptx|rar|rtf|svg|svgz|swf|tar|tbz|tgz|ttf|txt|txz|wav|webm|webp|woff|woff2|xls|xlsx|xml|xz|zip)(\?.*)?$") {
+        set req.http.X-Static-File = "true";
+        unset req.http.Cookie;
+        return(hash);
+    }
+
+    if (req.http.X-Forwarded-Proto !~ "(?i)https") {
+        set req.http.x-redir = "https://" + req.http.host + req.url;
+        return (synth(750, ""));
+    }
+
+    # Remove any cookies left
+    unset req.http.Cookie;
+    return (hash);
+}
+
+# handles redirecting from http to https
+sub vcl_synth {
+    if (resp.status == 750) {
+        set resp.status = 301;
+        set resp.http.Location = req.http.x-redir;
+        return (deliver);
+    }
+}
+
+sub vcl_backend_response {
+    set beresp.ttl = 10s;
+    # it keeps the cache for 1 hour while varnish will check the backend for a new version
+    set beresp.grace = 1h;
+}
+
+sub vcl_deliver {
+    if (obj.hits > 0) {
+        # Add debug header to see if it's a HIT/MISS
+        set resp.http.X-Cache = "HIT";
+    } else {
+        set resp.http.X-Cache = "MISS";
+    }
+}

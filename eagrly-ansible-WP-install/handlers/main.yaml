@@ -1,0 +1,19 @@
+---
+- name: restart mariadb server
+  systemd:
+    name: mariadb
+    state: restarted
+
+- name: restart nginx
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: nginx
+
+- name: reload nginx
+  systemd:
+    name: nginx
+    state: reloaded
+      
+- name: Flush Priviliges
+  command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
