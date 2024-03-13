@@ -4,6 +4,7 @@
 # - Install mariadb-server, create dtatbases, users and grant access
 # - Install PHP
 # - Install wordpress
+# - Install wp cli command
 # - Generate self-sign cert 
 # - Generate certbot cert
 # - Install nginx
@@ -289,6 +290,13 @@
         state: restarted
         name: nginx 
       when: response.rc == 0
+
+    # Install wp-cli command
+    - name: Download Wordpress CLI command
+      get_url:
+        url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+        dest: "/usr/local/bin/wp"
+        mode: '0755'
 
     # Varnish cache setup
     - name: Install Varnish
