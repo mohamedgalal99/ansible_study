@@ -9,6 +9,7 @@
 # - Generate certbot cert
 # - Install nginx
 # - Install varnish
+# - Install composer
 ########################################################################
 
 - hosts: webservers
@@ -32,6 +33,7 @@
         db_name: "eagrly"
         db_create: "true"
         root_dir: "/var/www/word.leaf.cloud"
+        public_domain: "true"
       - name: "lolo.leaf.cloud"
         server_name: "lolo.leaf.cloud"
         status: "disable"
@@ -41,6 +43,7 @@
         db_name: ""
         db_create: "false"
         root_dir: "/var/www/lolo.leaf.cloud/html/public_html"
+        public_domain: "false"
       - name: "default"
         server_name: "_"
         status: "disable"
@@ -189,11 +192,6 @@
         name: nginx
         state: latest
 
-    - name: Delete default website
-      file:
-        path: /etc/nginx/sites-enabled/default
-        state: absent
-
     - name: Create website dir
       file:
         path: "/var/www/{{ item.name }}"
@@ -333,7 +331,7 @@
       shell: >
         certbot --nginx --email "{{ admin_mail }}" --agree-tos -d "{{ item.name }}"
       with_items: "{{ file_names }}"
-      when: item.status == "enable"
+      when: item.status == "enable" and item.public_domain == "true"
 
     - name: Testing Nginx Configuration
       command: nginx -t
@@ -345,3 +343,13 @@
         state: restarted
         name: nginx
       when: response.rc == 0
+
+    # Install composer
+    - name: Download composer
+      get_url:
+        url: https://getcomposer.org/installer
+        dest: /tmp/composer-setup.php
+
+    - name: Install composer
+      shell: >
+        php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
