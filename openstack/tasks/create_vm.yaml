@@ -1,0 +1,36 @@
+---
+- name: Build nics variable
+  set_fact:
+#    vm_nics: "{{ [{'net-id': net.name} for net in project.internal | unique] }}"
+    vm_nics: "{{ project.internal | map(attribute='name') | list | map('community.general.dict_kv', 'net-name') | list }}"
+
+- name: Create VM {{ vm.name }}-{{ project.name }}
+  openstack.cloud.server:
+    auth:
+      auth_url: "{{ selected_cloud.url }}"
+      username: "{{ selected_cloud.username }}"
+      password: "{{ selected_cloud.password }}"
+      project_name: "{{ project.name }}"
+      user_domain_name: "{{ selected_cloud.domain }}"
+      project_domain_name: "admin_domain"
+    state: present
+    name: "{{ vm.name }}_{{ project.name }}"
+    image: "{{ vm.image }}"
+    key_name: "{{ vm.ssh_key | default(omit) }}" 
+    timeout: 200
+    flavor: "{{ vm.flavor }}"
+    nics: "{{ vm_nics }}"
+    auto_ip: false
+    userdata: |
+      # cloud-config
+      users:
+        - name: ubuntu
+          lock_passwd: false
+          plain_text_passwd: "{{ vm.passwd }}"
+          sudo: ALL=(ALL) NOPASSWD:ALL
+          shell: /bin/bash
+      chpasswd:
+        expire: false
+      ssh_pwauth: true
+      disable_root: false
+

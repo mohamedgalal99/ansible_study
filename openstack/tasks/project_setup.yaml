@@ -63,3 +63,16 @@
   shell: |
     openstack router set --route destination=0.0.0.0/0,gateway={{ project.external.gateway_ip }} {{ router.id }}
 
+- name: Adding role to admin user on project {{ project.name }}
+  openstack.cloud.role_assignment:
+    state: present
+    user: "admin"
+    role: "Admin"
+    project: "{{ project.name }}"
+
+- name: Create VMs attached to internel network
+  include_tasks: create_vm.yaml
+  loop: "{{ project.vms | default([]) }}"
+  loop_control:
+    loop_var: vm
+  when: project.vms is defined

@@ -38,5 +38,8 @@ projects:
       mtu: 9000
       network_external: true
       network_shared: false
-
-
+    vms:
+      - name: "vm-test-01"
+        image: "ubuntu-22.04"
+        flavor: "m1.medium"
+        passwd: "ubuntu"
