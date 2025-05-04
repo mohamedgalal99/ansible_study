@@ -1,0 +1,65 @@
+---
+- name: Create project
+  openstack.cloud.project:
+    auth:
+      auth_url: "{{ selected_cloud.url }}"
+      username: "{{ selected_cloud.username }}"
+      password: "{{ selected_cloud.password }}"
+      project_name: "{{ selected_cloud.project }}"
+      user_domain_name: "{{ selected_cloud.domain }}"
+      project_domain_name: "admin_domain"
+    state: present
+    name: "{{ project.name }}"
+    domain_id: "admin_domain"
+    enabled: true
+
+- name: Create internal networks and subnets
+  include_tasks: create_internal_net.yaml
+  loop: "{{ project.internal }}"
+  loop_control:
+    loop_var: intnet
+
+- name: Create external network
+  openstack.cloud.network:
+    #cloud: "{{ openstack_cloud }}"
+    name: "{{ project.external.name }}"
+    project: "{{ project.name }}"
+    external: "{{ project.external.network_external }}"
+    shared: "{{ project.external.network_shared }}"
+    provider_network_type: "{{ project.external.provider_network_type }}"
+    provider_physical_network: "{{ project.external.provider_physical_network }}"
+    provider_segmentation_id: "{{ project.external.provider_segmentation_id }}"
+    mtu: "{{ project.external.mtu }}"
+    state: present
+
+- name: Create external subnet
+  os_subnet:
+    #cloud: "{{ openstack_cloud }}"
+    name: "{{ project.external.subnet }}"
+    network_name: "{{ project.external.name }}"
+    cidr: "{{ project.external.cidr }}"
+    gateway_ip: "{{ project.external.gateway_ip }}"
+    enable_dhcp: false
+    project: "{{ project.name }}"
+
+#- name: Build a list of network interfaces
+#  set_fact:
+#    router_interfaces: "{{ project.internal | map('extract', 'subnet_name') | map('community.general.dict_kv', 'subnet') | list }}"
+
+- name: Create router
+  openstack.cloud.router:
+    #cloud: "{{ openstack_cloud }}"
+    name: "{{ project.name }}-router"
+    project: "{{ project.name }}"
+    network: "{{ project.external.name }}"
+    enable_snat: "{{ project.router.enable_snat }}"
+    external_fixed_ips:
+      - subnet: "{{ project.external.subnet }}"
+    interfaces: "{{ project.internal | map(attribute='subnet_name') | list }}"
+    state: present
+  register: router
+
+- name: Add route using OpenStack CLI (better style)
+  shell: |
+    openstack router set --route destination=0.0.0.0/0,gateway={{ project.external.gateway_ip }} {{ router.id }}
+

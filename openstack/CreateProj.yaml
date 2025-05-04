@@ -1,0 +1,30 @@
+---
+- name: OpenStack Project Full Setup
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - openstack_creds.yaml
+    - vars/project-01.yaml
+    - vars/project-02.yaml
+
+  vars:
+    clouds:
+      - name: "{{ os_auth.name }}"
+        url: "{{ os_auth.url }}"
+        username: "{{ os_auth.username }}"
+        password: "{{ os_auth.password }}"
+        project: "{{ os_auth.project }}"
+        domain: "{{ os_auth.domain }}"
+
+    selected_cloud: "{{ clouds[0] }}"
+
+  tasks:
+    
+    - name: Include project setup task for each project
+      include_tasks: tasks/project_setup.yaml
+      loop: "{{ projects }}"
+      loop_control:
+        loop_var: project
+      when: project.create == true 
+

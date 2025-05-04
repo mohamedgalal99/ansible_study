@@ -1,0 +1,22 @@
+    - name: Create internal network {{ intnet.name }}
+      os_network:
+        #cloud: "{{ openstack_cloud }}"
+        name: "{{ intnet.name }}"
+        project: "{{ project.name }}"
+        external: false
+        shared: false
+        state: present
+
+    - name: Create internal subnet {{ intnet.subnet_name }}
+      os_subnet:
+        #cloud: "{{ openstack_cloud }}"
+        name: "{{ intnet.subnet_name }}"
+        network_name: "{{ intnet.name }}"
+        cidr: "{{ intnet.cidr }}"
+        gateway_ip: "{{ intnet.gateway_ip }}"
+        allocation_pool_start: "{{ intnet.allocation_pool_start }}"
+        allocation_pool_end: "{{ intnet.allocation_pool_end }}"
+        enable_dhcp: "{{ intnet.enable_dhcp }}"
+        project: "{{ project.name }}"
+        state: present
+

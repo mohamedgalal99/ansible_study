@@ -1,0 +1,42 @@
+---
+projects:
+  - name: nic00-cust00-prj02
+    create: true
+    router:
+      enable_snat: false
+    internal:
+      - name: nic00-cust00-02-mgmt-network
+        subnet_name: nic00-cust00-02-mgmt-subnet
+        cidr: 192.168.153.96/27
+        gateway_ip: 192.168.153.97
+        allocation_pool_start: 192.168.153.98
+        allocation_pool_end: 192.168.153.126
+        enable_dhcp: true
+      - name: nic00-cust00-02-traffic-network-01
+        subnet_name: nic00-cust00-02-traffic-subnet-01
+        cidr: 192.168.153.128/27
+        gateway_ip: 192.168.153.129
+        allocation_pool_start: 192.168.153.130
+        allocation_pool_end: 192.168.153.158
+        enable_dhcp: true
+      - name: nic00-cust00-02-traffic-network
+        subnet_name: nic00-cust00-02-traffic-subnet-02
+        cidr: 192.168.153.160/27
+        gateway_ip: 192.168.153.161
+        allocation_pool_start: 192.168.153.162
+        allocation_pool_end: 192.168.153.190
+        enable_dhcp: true
+    external:
+      name: nic00-cust00-02-external-network
+      subnet: nic00-cust00-02-external-net-sub
+      cidr: 100.66.64.48/28
+      gateway_ip: 100.66.64.49
+      #provider_network_type: "geneve"
+      provider_network_type: "vlan"
+      provider_physical_network: "physnet1"
+      provider_segmentation_id: 2003
+      mtu: 9000
+      network_external: true
+      network_shared: false
+
+
